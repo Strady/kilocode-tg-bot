@@ -87,6 +87,21 @@ def test_tools_router_run(
     assert fake_kilo.called("run_command")
 
 
+def test_shell_asks_confirmation_before_running(
+    dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any, store: Any
+) -> None:
+    bot, dp, rec = dispatcher
+    fake_kilo.seed_session("s-shell", "demo")
+    asyncio.run(store.set_active(OWNER, "s-shell"))
+    # '-la' contains '-', which is reserved in Telegram markdown; the confirm
+    # message must be sent as plain text so parsing never fails.
+    _feed(dp, bot, make_raw_message_update(user_id=OWNER, text="/shell ls -la"))
+    assert not fake_kilo.called("run_shell")  # only asked, no execution yet
+    sent = _joined(_sent(rec))
+    assert "Выполнить shell-команду" in sent
+    assert "ls -la" in sent
+
+
 def test_health_router(
     dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any
 ) -> None:

@@ -137,8 +137,7 @@ async def on_shell(
     await state.set_state(ShellPendingStates.confirming)
     await state.update_data(session_id=session_id, command=cmd, arguments=arguments)
     await message.answer(
-        f"⚠️ Выполнить shell-команду на машине?\n\n`{cmd} {arguments}`".strip(),
-        parse_mode="MarkdownV2",
+        f"⚠️ Выполнить shell-команду на машине?\n\n{cmd} {arguments}".strip(),
         reply_markup=confirm_keyboard(
             ShellConfirmCD(action="run"), ShellConfirmCD(action="cancel")
         ),
