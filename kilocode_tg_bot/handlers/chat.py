@@ -154,7 +154,9 @@ async def _run_stream(
         )
 
     async def on_turn_close() -> None:
-        await stream_msg.edit_text(stream_msg.text or "(пустой ответ)", reply_markup=None)
+        await stream_msg.edit_text(
+            _cap(stream_msg.text or "(пустой ответ)"), reply_markup=None
+        )
 
     try:
         final = await stream_prompt(
