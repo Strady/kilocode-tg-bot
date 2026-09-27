@@ -86,6 +86,16 @@ class EditThrottler:
             return
 
 
+def _is_reasoning_delta(event: Any, part_kind: dict[str, str]) -> bool:
+    """True if this text delta belongs to a reasoning (chain-of-thought) part."""
+    if event.type != "message.part.delta":
+        return False
+    pid = event.properties.get("partID")
+    if not isinstance(pid, str):
+        return False
+    return part_kind.get(pid) == "reasoning"
+
+
 def _format_tool(tool: Any) -> str:
     """Render a :class:`ToolCallEvent` as a short status line."""
     status = getattr(tool, "status", "running")
@@ -133,11 +143,29 @@ async def stream_prompt(
     sender = asyncio.create_task(send())
     final_text = ""
 
+    # Track the kind of each message part (``text``/``reasoning``) so text deltas
+    # belonging to a reasoning part are dropped: only the final assistant answer
+    # is shown to the user, never the model's internal chain of thought.
+    part_kind: dict[str, str] = {}
+
+    def _remember_part(part: Any) -> None:
+        pid = part.get("id") if isinstance(part, dict) else getattr(part, "id", None)
+        kind = part.get("type") if isinstance(part, dict) else getattr(part, "type", None)
+        if pid is not None and kind is not None:
+            part_kind[str(pid)] = str(kind)
+
     try:
         async for event in stream:
+            if event.type == "message.part.updated":
+                part = event.properties.get("part")
+                if part is not None:
+                    _remember_part(part)
             if delta := text_delta_of(event):
-                throttler.push(delta)
-                await throttler.maybe_flush()
+                # Drop reasoning deltas but keep something when the part kind is
+                # unknown (older event shapes / tests) so a reply is never lost.
+                if not _is_reasoning_delta(event, part_kind):
+                    throttler.push(delta)
+                    await throttler.maybe_flush()
             if tool := tool_call_of(event):
                 if on_tool is not None:
                     await on_tool(_format_tool(tool))

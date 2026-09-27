@@ -172,3 +172,31 @@ async def test_stream_forwards_tool_and_permission() -> None:
     await _stream(kilo, "s2", "x", on_tool=on_tool, on_permission=on_perm)
     assert any("read" in t for t in tools)
     assert perms == ["r1"]
+
+
+async def test_stream_drops_reasoning_deltas_keeps_final_answer() -> None:
+    from tests.fakes.events import part_text_delta, part_updated
+
+    flushed: list[str] = []
+    kilo = FakeKilo()
+    kilo.seed_session("s3", "demo")
+    # a reasoning part streams first, then the final assistant text part
+    await kilo.set_stream_events(
+        "s3",
+        [
+            part_updated("s3", "p_reason", "reasoning"),
+            part_text_delta("s3", "p_reason", "Let me think about this..."),
+            part_updated("s3", "p_text", "text"),
+            part_text_delta("s3", "p_text", "The answer is 42."),
+            turn_close("s3"),
+        ],
+    )
+
+    async def flush(text: str) -> None:
+        flushed.append(text)
+
+    final = await _stream(kilo, "s3", "q", flush=flush)
+    # reasoning text is filtered out; only the assistant answer remains
+    assert "think about" not in final
+    assert "answer is 42" in final
+    assert "answer is 42" in "".join(flushed)

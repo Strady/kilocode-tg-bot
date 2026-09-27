@@ -12,6 +12,30 @@ def text_delta(session_id: str, delta: str) -> KiloEvent:
     )
 
 
+def part_updated(session_id: str, part_id: str, kind: str) -> KiloEvent:
+    """A ``message.part.updated`` that registers a part's kind (``text``/``reasoning``)."""
+    return KiloEvent(
+        type="message.part.updated",
+        properties={
+            "sessionID": session_id,
+            "part": {"id": part_id, "type": kind, "sessionID": session_id},
+        },
+    )
+
+
+def part_text_delta(session_id: str, part_id: str, delta: str) -> KiloEvent:
+    """A text delta tagged with a ``partID`` (matches real server reasoning split)."""
+    return KiloEvent(
+        type="message.part.delta",
+        properties={
+            "field": "text",
+            "delta": delta,
+            "sessionID": session_id,
+            "partID": part_id,
+        },
+    )
+
+
 def tool_event(session_id: str, tool: str, input_data: dict | None = None) -> KiloEvent:
     return KiloEvent(
         type="session.next.tool.called",
@@ -49,6 +73,8 @@ def text_turn(session_id: str, frames: list[str]) -> list[KiloEvent]:
 
 __all__ = [
     "text_delta",
+    "part_updated",
+    "part_text_delta",
     "tool_event",
     "permission_event",
     "turn_close",
