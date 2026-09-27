@@ -47,3 +47,32 @@ async def test_cancel_resets_fsm(bot: Bot, fake_kilo: FakeKilo, fsm: Any) -> Non
     assert await fsm.get_state() is None
     assert await fsm.get_data() == {}
     assert any("сброшено" in s for s in _texts(bot))
+
+
+async def test_help_lists_commands(bot: Bot) -> None:
+    from kilocode_tg_bot.handlers.misc import on_help
+
+    message = make_message(bot, text="/help")
+    await on_help(message)
+    sent = "\n".join(_texts(bot))
+    for cmd in ("/help", "/new", "/sessions", "/model", "/agent", "/context", "/history"):
+        assert cmd in sent
+
+
+async def test_unknown_command_answers_friendly(bot: Bot) -> None:
+    from kilocode_tg_bot.handlers.misc import on_unknown_command
+
+    message = make_message(bot, text="/definitely_not_a_command")
+    await on_unknown_command(message)
+    sent = "\n".join(_texts(bot))
+    assert "Неизвестная команда /definitely_not_a_command" in sent
+    assert "/help" in sent
+
+
+async def test_unknown_command_preserves_arguments(bot: Bot) -> None:
+    from kilocode_tg_bot.handlers.misc import on_unknown_command
+
+    message = make_message(bot, text="/unknowncmd with args")
+    await on_unknown_command(message)
+    sent = "\n".join(_texts(bot))
+    assert "Неизвестная команда /unknowncmd" in sent

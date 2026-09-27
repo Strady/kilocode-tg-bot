@@ -96,6 +96,37 @@ def test_health_router(
     assert any("Сервер Kilo отвечает" in s for s in _sent(rec))
 
 
+def test_help_router_lists_commands(
+    dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any
+) -> None:
+    bot, dp, rec = dispatcher
+    _feed(dp, bot, make_raw_message_update(user_id=OWNER, text="/help"))
+    sent = _joined(_sent(rec))
+    assert "/new" in sent and "/health" in sent and "/context" in sent
+    # a known command must not be misreported as unknown
+    assert "Неизвестная команда" not in sent
+
+
+def test_unknown_command_router_answers(
+    dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any
+) -> None:
+    bot, dp, rec = dispatcher
+    _feed(dp, bot, make_raw_message_update(user_id=OWNER, text="/zzz_not_a_command"))
+    sent = _joined(_sent(rec))
+    assert "Неизвестная команда /zzz_not_a_command" in sent
+    assert fake_kilo.calls == []  # no server interaction for an unknown command
+
+
+def test_known_command_not_swallowed_by_unknown_router(
+    dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any
+) -> None:
+    bot, dp, rec = dispatcher
+    # the unknown-command fallback must not eat a real command (/cancel has no deps)
+    _feed(dp, bot, make_raw_message_update(user_id=OWNER, text="/cancel"))
+    sent = _joined(_sent(rec))
+    assert "Неизвестная команда" not in sent
+
+
 def test_foreign_user_never_reaches_any_handler(
     dispatcher: tuple[Bot, Dispatcher, Any], fake_kilo: Any
 ) -> None:
