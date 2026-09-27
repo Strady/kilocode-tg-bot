@@ -1,0 +1,38 @@
+# Composes the Telegram bot in a container.
+#
+# Configuration comes from the .env file in this directory (git-ignored), the
+# same file the bot reads when run natively. Values are forwarded into the
+# container as environment variables; nothing secret is baked into the image.
+#
+# The bot talks to a Kilo server that lives on the HOST (e.g. `kilo serve
+# --port 4096`). We use host networking so the default KILO_SERVER_URL of
+# http://127.0.0.1:4096 reaches the host's server directly. If you run the
+# Kilo server in another container instead, switch to the standard bridge
+# network and point KILO_SERVER_URL at that service.
+services:
+  bot:
+    build:
+      context: .
+      network: host
+    container_name: kilocode-tg-bot
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_ALLOWED_USER_ID: ${TELEGRAM_ALLOWED_USER_ID:?set TELEGRAM_ALLOWED_USER_ID in .env}
+      TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+      TELEGRAM_PROXY_USERNAME: ${TELEGRAM_PROXY_USERNAME:-}
+      TELEGRAM_PROXY_PASSWORD: ${TELEGRAM_PROXY_PASSWORD:-}
+      KILO_SERVER_URL: ${KILO_SERVER_URL:-http://127.0.0.1:4096}
+      KILO_SERVER_USERNAME: ${KILO_SERVER_USERNAME:-kilo}
+      KILO_SERVER_PASSWORD: ${KILO_SERVER_PASSWORD:-}
+      KILO_SERVER_DIRECTORY: ${KILO_SERVER_DIRECTORY:-}
+      TELEGRAM_EDIT_THROTTLE_SECONDS: ${TELEGRAM_EDIT_THROTTLE_SECONDS:-1.0}
+      MESSAGE_FILE_THRESHOLD: ${MESSAGE_FILE_THRESHOLD:-3900}
+      # Persisted into a named volume so the active session survives restarts.
+      SESSION_STORE_PATH: /data/kilocode_bot_state.db
+    volumes:
+      - bot-data:/data
+
+volumes:
+  bot-data:

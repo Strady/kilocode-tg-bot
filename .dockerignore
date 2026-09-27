@@ -1,0 +1,17 @@
+.git
+.venv
+.gitignore
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.db
+kilocode_bot_state.db
+.env
+.env.*
+docs/_build/
+.idea/

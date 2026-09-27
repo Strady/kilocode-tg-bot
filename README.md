@@ -127,6 +127,34 @@ EOF
 .venv/bin/python -m kilocode_tg_bot.bot
 ```
 
+### Запуск в контейнере (docker-compose)
+
+В репозитории лежат `Dockerfile` и `docker-compose.yaml`. Compose читает уже
+существующий `.env` (тот же, что и для обычного запуска) и пробрасывает его
+значения в контейнер; ничего секретного не зашивается в образ.
+
+```bash
+# 1) Kilo-сервер живёт на хосте
+kilo serve --port 4096 &
+
+# 2) токены/доступ — в .env (см. раздел «Переменные окружения»)
+cp .env.example .env   # заполните TELEGRAM_BOT_TOKEN и TELEGRAM_ALLOWED_USER_ID
+
+# 3) собрать образ и поднять бота (сеть = host, поэтому KILO_SERVER_URL:
+#    http://127.0.0.1:4096 достаёт до сервера на хосте)
+docker compose up -d --build
+```
+
+Особенности:
+
+- **network_mode: host** — бот использует сеть хоста, так что его обращение к
+  `http://127.0.0.1:4096` попадает прямо на Kilo-сервер, запущенный на хосте.
+  Если Kilo-сервер держишь в отдельном контейнере — переведи на bridge-сеть и
+  укажи `KILO_SERVER_URL` на этот сервис.
+- **Тома** — SQLite-база активной сессии (`SESSION_STORE_PATH`) пишется в named
+  volume `bot-data` и переживает пересоздание/рестарт контейнера.
+- Логи бота: `docker compose logs -f bot`. Остановка: `docker compose down`.
+
 ## Как это устроено
 
 - `config.py` — настройки через `pydantic-settings` (`.env` + окружение).
