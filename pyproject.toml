@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = true
+
 [project]
 name = "kilocode-tg-bot"
 version = "0.1.0"
@@ -19,7 +26,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
     "aiosqlite>=0.20",
-    "kilocode-client>=0.1.0",
+    "kilocode-client @ git+https://github.com/Strady/kilocode-client.git#branch=main",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +45,7 @@ docs = [
 ]
 
 [project.scripts]
-kilocode-tg-bot = "kilocode_tg_bot.bot:main"
+kilocode-tg-bot = "kilocode_tg_bot.bot:main_sync"
 
 [tool.setuptools.packages.find]
 include = ["kilocode_tg_bot*"]

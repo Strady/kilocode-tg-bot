@@ -12,30 +12,35 @@ class TestDefaults:
         settings = Settings(
             telegram_bot_token="tok",
             telegram_allowed_user_id=42,
+            _env_file=None,
         )
         assert settings.kilo_server_url == "http://127.0.0.1:4096"
         assert settings.telegram_edit_throttle_seconds == 1.0
         assert settings.message_file_threshold == 3900
 
     def test_optional_kilo_fields_default_to_none(self) -> None:
-        settings = Settings(telegram_bot_token="tok", telegram_allowed_user_id=1)
+        settings = Settings(
+            telegram_bot_token="tok", telegram_allowed_user_id=1, _env_file=None
+        )
         assert settings.kilo_server_username is None
         assert settings.kilo_server_password is None
         assert settings.kilo_server_directory is None
 
     def test_require_token_returns_token(self) -> None:
-        settings = Settings(telegram_bot_token="abc", telegram_allowed_user_id=1)
+        settings = Settings(
+            telegram_bot_token="abc", telegram_allowed_user_id=1, _env_file=None
+        )
         assert settings.require_token() == "abc"
 
 
 class TestValidation:
     def test_missing_token_fails(self) -> None:
         with pytest.raises(ValidationError):
-            Settings(telegram_allowed_user_id=42)  # type: ignore[call-arg]
+            Settings(telegram_allowed_user_id=42, _env_file=None)  # type: ignore[call-arg]
 
     def test_missing_allowed_user_fails(self) -> None:
         with pytest.raises(ValidationError):
-            Settings(telegram_bot_token="tok")  # type: ignore[call-arg]
+            Settings(telegram_bot_token="tok", _env_file=None)  # type: ignore[call-arg]
 
     def test_extra_env_vars_are_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
@@ -54,7 +59,9 @@ class TestValidation:
 
 class TestTelegramProxy:
     def _settings(self, **kwargs):
-        return Settings(telegram_bot_token="tok", telegram_allowed_user_id=1, **kwargs)
+        return Settings(
+            telegram_bot_token="tok", telegram_allowed_user_id=1, _env_file=None, **kwargs
+        )
 
     def test_proxy_defaults_to_none(self) -> None:
         assert self._settings().telegram_proxy() is None

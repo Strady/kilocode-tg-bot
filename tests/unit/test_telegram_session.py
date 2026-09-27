@@ -18,7 +18,11 @@ def _aiohttp(settings: Settings) -> AiohttpSession:
 class TestBuildSession:
     def test_no_proxy_returns_plain_session(self) -> None:
         session = _aiohttp(
-            Settings(telegram_bot_token="123456:TEST-TOKEN", telegram_allowed_user_id=1)
+            Settings(
+                telegram_bot_token="123456:TEST-TOKEN",
+                telegram_allowed_user_id=1,
+                _env_file=None,
+            )
         )
         assert session._connector_type.__name__ == "TCPConnector"
 
@@ -30,6 +34,7 @@ class TestBuildSession:
                 telegram_proxy_url="http://proxy.example.com:9999",
                 telegram_proxy_username="proxyuser",
                 telegram_proxy_password="secret",
+                _env_file=None,
             )
         )
         assert session._connector_type is ProxyConnector
@@ -45,6 +50,7 @@ class TestBuildSession:
                 telegram_bot_token="123456:TEST-TOKEN",
                 telegram_allowed_user_id=1,
                 telegram_proxy_url="http://user:pass@proxy.example.com:9999",
+                _env_file=None,
             )
         )
         assert session._connector_type is ProxyConnector
@@ -58,7 +64,11 @@ class TestBuildSession:
         bot = Bot(
             token="123456:TEST-TOKEN",
             session=build_session(
-                Settings(telegram_bot_token="123456:TEST-TOKEN", telegram_allowed_user_id=1)
+                Settings(
+                    telegram_bot_token="123456:TEST-TOKEN",
+                    telegram_allowed_user_id=1,
+                    _env_file=None,
+                )
             ),
         )
         assert isinstance(bot.session, AiohttpSession)
@@ -71,6 +81,7 @@ def test_build_session_needs_no_network() -> None:
             telegram_bot_token="123456:TEST-TOKEN",
             telegram_allowed_user_id=1,
             telegram_proxy_url="http://proxy.example.com:9999",
+            _env_file=None,
         )
     )
     # Merely building the session/connector must not connect anywhere.

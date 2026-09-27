@@ -14,6 +14,7 @@ async def test_dispatcher_assembles():
         telegram_bot_token="123456:TESTTOKEN",
         telegram_allowed_user_id=42,
         kilo_server_url="http://127.0.0.1:4096",
+        _env_file=None,
     )
     bot, dp, store = build_dispatcher(settings)
     try:
@@ -40,4 +41,4 @@ async def test_dispatcher_assembles():
 
 def test_settings_require_owner():
     with pytest.raises(ValueError):
-        Settings()
+        Settings(_env_file=None)

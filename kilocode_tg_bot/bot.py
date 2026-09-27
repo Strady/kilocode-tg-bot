@@ -91,5 +91,10 @@ async def main() -> None:
         await bot.session.close()
 
 
-if __name__ == "__main__":
+def main_sync() -> None:
+    """Synchronous console entry point that runs :func:`main`."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    main_sync()
