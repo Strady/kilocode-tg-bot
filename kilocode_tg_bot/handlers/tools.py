@@ -13,6 +13,7 @@ from kilocode_client import Kilo
 from kilocode_tg_bot.config import Settings
 from kilocode_tg_bot.handlers.common import call_kilo, editable_message, reply_text
 from kilocode_tg_bot.keyboards.inline import ShellConfirmCD, confirm_keyboard
+from kilocode_tg_bot.services.telegram_sender import send_html
 from kilocode_tg_bot.state.session_store import SessionStore
 from kilocode_tg_bot.state.states import ShellPendingStates
 
@@ -57,7 +58,7 @@ async def on_context(message: Message, kilo: Kilo, store: SessionStore, settings
         await message.answer("В активном контексте после последнего сжатия сообщений нет.")
         return
     text = "\n\n".join(f"[{getattr(m, 'type', '?')}]\n{_ctx_text(m)}" for m in ctx)
-    await reply_text(message, text, settings)
+    await reply_text(message, text, settings, render_markdown=True)
 
 
 def _ctx_text(msg: Any) -> str:
@@ -92,7 +93,7 @@ async def on_todo(message: Message, kilo: Kilo, store: SessionStore) -> None:
     for t in todos:
         mark = "☑" if getattr(t, "status", "") in ("completed", "done") else "☐"
         lines.append(f"{mark} {getattr(t, 'content', '')}")
-    await message.answer("\n".join(lines))
+    await send_html(message.answer, "\n".join(lines))
 
 
 @router.message(Command("run"))
@@ -225,7 +226,7 @@ async def _fmt_message_result(message: Message, msg: Any) -> None:
     text = "".join(getattr(p, "text", "") for p in parts if getattr(p, "type", "") == "text")
     if not text:
         text = f"(готово, сообщений в ответе: {len(parts)})"
-    await message.answer(text[:3900] if len(text) > 3900 else text)
+    await send_html(message.answer, text[:3900] if len(text) > 3900 else text)
 
 
 __all__ = ["router"]

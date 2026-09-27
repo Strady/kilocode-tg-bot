@@ -29,6 +29,7 @@ from kilocode_tg_bot.keyboards.inline import (
     permission_keyboard,
 )
 from kilocode_tg_bot.services.streaming import stream_prompt
+from kilocode_tg_bot.services.telegram_sender import send_html
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +137,21 @@ async def _run_stream(
     if stream_msg is None:
         return
 
+    # Raw markdown chunks accumulated so far; converted to HTML on each edit so a
+    # partially-rendered stream is never built from a bare delta (which could be
+    # a half-open ``**`` / code fence on its own).
+    acc: list[str] = []
+
     async def flush(text: str) -> None:
         if handle.cancelled:
             return
-        await stream_msg.edit_text(_cap(text), parse_mode=None, reply_markup=keyboard)
+        acc.append(text)
+        await send_html(
+            stream_msg.edit_text,
+            _cap("".join(acc)),
+            reply_markup=keyboard,
+            fallback_reply_markup=keyboard,
+        )
 
     async def on_tool(status_line: str) -> None:
         if handle.cancelled:
@@ -154,9 +166,8 @@ async def _run_stream(
         )
 
     async def on_turn_close() -> None:
-        await stream_msg.edit_text(
-            _cap(stream_msg.text or "(пустой ответ)"), reply_markup=None
-        )
+        source = "".join(acc) or "(пустой ответ)"
+        await send_html(stream_msg.edit_text, _cap(source), reply_markup=None)
 
     try:
         final = await stream_prompt(
@@ -169,7 +180,7 @@ async def _run_stream(
             on_turn_close=on_turn_close,
             edit_interval=settings.telegram_edit_throttle_seconds,
         )
-        await stream_msg.edit_text(_cap(final or "(пустой ответ)"), reply_markup=None)
+        await send_html(stream_msg.edit_text, _cap(final or "(пустой ответ)"))
         await status.delete()
     except Exception as exc:  # noqa: BLE001 - report, don't crash
         logger.exception("Streaming error")

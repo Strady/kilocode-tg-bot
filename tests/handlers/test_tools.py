@@ -187,12 +187,14 @@ async def test_todo_with_items(
     from kilocode_tg_bot.handlers.tools import on_todo
 
     await _activate(fake_kilo, store)
-    fake_kilo.seed_todo(ACTIVE, "Fix bug", "pending")
+    fake_kilo.seed_todo(ACTIVE, "Fix **bug**", "pending")
     fake_kilo.seed_todo(ACTIVE, "Ship it", "completed")
     message = make_message(bot, text="/todo")
     await on_todo(message, kilo=cast(Kilo, fake_kilo), store=store)
     sent = "\n".join(_texts(bot))
-    assert "Fix bug" in sent and "Ship it" in sent
+    assert "Ship it" in sent
+    # todo content is rendered as HTML (bold tag for **bug**)
+    assert "Fix <b>bug</b>" in sent
 
 
 async def test_revert_with_message_id(

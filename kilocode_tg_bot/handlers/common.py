@@ -18,6 +18,7 @@ from kilocode_client import KiloError, SessionInfo
 
 from kilocode_tg_bot.config import Settings
 from kilocode_tg_bot.services.kilo import humanize_error
+from kilocode_tg_bot.services.telegram_sender import send_html
 from kilocode_tg_bot.state.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
@@ -41,18 +42,27 @@ async def reply_text(
     *,
     reply: bool = True,
     parse_mode: str | None = None,
+    render_markdown: bool = False,
     **kwargs: Any,
 ) -> Message | None:
-    """Reply with ``text``; if it is too large, ship it as a ``.txt`` file."""
+    """Reply with ``text``; if it is too large, ship it as a ``.txt`` file.
+
+    When ``render_markdown`` is true the text is treated as model markdown and
+    converted to Telegram HTML (with a plain-text fallback instead of raising a
+    parse error).
+    """
     if len(text) > settings.message_file_threshold:
         data = BufferedInputFile(text.encode("utf-8"), filename="kilocode_output.txt")
         if reply:
             return await message.answer_document(data, reply_to_message_id=message.message_id)
         return await message.answer_document(data)
     method = message.reply if reply else message.answer
+    reply_kwargs = dict(kwargs)
     if reply:
-        kwargs["reply_to_message_id"] = message.message_id
-    return await method(truncate(text), parse_mode=parse_mode, **kwargs)
+        reply_kwargs["reply_to_message_id"] = message.message_id
+    if render_markdown:
+        return await send_html(method, truncate(text), **reply_kwargs)
+    return await method(truncate(text), parse_mode=parse_mode, **reply_kwargs)
 
 
 async def call_kilo(fn: Callable[[], Awaitable[T]], message: Message) -> T | None:

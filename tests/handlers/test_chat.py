@@ -70,6 +70,33 @@ async def test_chat_streams_text_into_edits(
     assert len(edits) >= 1
 
 
+async def test_chat_streams_markdown_as_html(
+    bot: Bot, fake_kilo: FakeKilo, store: Any
+) -> None:
+    from kilocode_tg_bot.handlers.chat import on_chat
+
+    fake_kilo.seed_session("s1", "demo")
+    await store.set_active(42, "s1")
+    await fake_kilo.set_stream_events(
+        "s1",
+        [
+            events.text_delta("s1", "**done** `ok`"),
+            events.turn_close("s1"),
+        ],
+    )
+    fake_kilo.event_delay = 0.001
+
+    message = make_message(bot, text="go")
+    await on_chat(message, kilo=cast(Kilo, fake_kilo), store=store, settings=_settings())
+
+    edit_calls = records(bot).method_calls("editMessageText")
+    # the streamed rich text is sent with parse_mode=HTML
+    assert edit_calls, "expected streamed edits"
+    assert all(c.data.get("parse_mode") == "HTML" for c in edit_calls)
+    # and the final message contains HTML tags for the markdown constructs
+    assert any("<b>done</b> <code>ok</code>" in c.text() for c in edit_calls)
+
+
 async def test_chat_tool_call_surface_separate_message(
     bot: Bot, fake_kilo: FakeKilo, store: Any
 ) -> None:
