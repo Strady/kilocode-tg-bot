@@ -8,7 +8,7 @@ from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from kilocode_client import Kilo
+from kilocode_client import Kilo, MessageWithParts
 
 from kilocode_tg_bot.config import Settings
 from kilocode_tg_bot.handlers.common import call_kilo, editable_message, reply_text
@@ -18,6 +18,8 @@ from kilocode_tg_bot.state.session_store import SessionStore
 from kilocode_tg_bot.state.states import ShellPendingStates
 
 router = Router(name="tools")
+
+DEFAULT_AGENT = "build"
 
 
 async def _active_id(store: SessionStore, message: Message) -> str | None:
@@ -134,8 +136,12 @@ async def on_shell(
     parts = args.split(maxsplit=1)
     cmd = parts[0]
     arguments = parts[1] if len(parts) > 1 else ""
+    session = await call_kilo(lambda: kilo.session.get(session_id), message)
+    agent = session.agent if session is not None and session.agent else DEFAULT_AGENT
     await state.set_state(ShellPendingStates.confirming)
-    await state.update_data(session_id=session_id, command=cmd, arguments=arguments)
+    await state.update_data(
+        session_id=session_id, command=cmd, arguments=arguments, agent=agent
+    )
     await message.answer(
         f"⚠️ Выполнить shell-команду на машине?\n\n{cmd} {arguments}".strip(),
         reply_markup=confirm_keyboard(
@@ -162,11 +168,16 @@ async def on_shell_confirm(
         return
     cmd = data.get("command", "")
     arguments = data.get("arguments", "")
+    agent = data.get("agent") or DEFAULT_AGENT
+
+    async def run() -> MessageWithParts:
+        return await kilo.run_shell(session_id, cmd, arguments, agent=agent)
+
     await callback.answer("Выполняю...")
     if msg is not None:
         await msg.edit_text(f"⚙️ Выполняю `{cmd} {arguments}`...".strip())
     result = (
-        await call_kilo(lambda: kilo.run_shell(session_id, cmd, arguments), msg)
+        await call_kilo(run, msg)
         if msg is not None
         else None
     )
@@ -222,7 +233,22 @@ async def _last_assistant_id(kilo: Kilo, session_id: str, message: Message) -> s
 
 async def _fmt_message_result(message: Message, msg: Any) -> None:
     parts = getattr(msg, "parts", None) or []
-    text = "".join(getattr(p, "text", "") for p in parts if getattr(p, "type", "") == "text")
+    chunks: list[str] = []
+    for p in parts:
+        ptype = getattr(p, "type", "")
+        if ptype == "text":
+            text = getattr(p, "text", "")
+            if text:
+                chunks.append(text)
+        elif ptype == "tool":
+            tool = getattr(p, "tool", "")
+            state = getattr(p, "state", None)
+            output = getattr(state, "output", "") if state is not None else ""
+            error = getattr(state, "error", "") if state is not None else ""
+            command = getattr(state, "input", {}).get("command", tool)
+            if tool and (output or error):
+                chunks.append(f"$ {command}\n{output or error}")
+    text = "\n".join(c.rstrip() for c in chunks if c.strip())
     if not text:
         text = f"(готово, сообщений в ответе: {len(parts)})"
     await send_html(message.answer, text[:3900] if len(text) > 3900 else text)

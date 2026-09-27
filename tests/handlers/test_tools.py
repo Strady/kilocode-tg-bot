@@ -78,7 +78,7 @@ async def test_shell_first_step_does_not_run(
         store=store,
         state=fsm,
     )
-    # must NOT call run_shell yet
+    # must NOT call the shell endpoint yet
     assert not fake_kilo.called("run_shell")
     sent = "\n".join(_texts(bot))
     assert "Выполнить shell-команду" in sent
@@ -108,6 +108,32 @@ async def test_shell_confirm_runs(
     await on_shell_confirm(callback, callback_data=cd, kilo=cast(Kilo, fake_kilo), state=fsm)
     calls = fake_kilo.calls_for("run_shell")
     assert calls and calls[0].args == (ACTIVE, "ls", "-la")
+    assert calls[0].kwargs == {"agent": "build"}  # session has no agent -> default
+
+
+async def test_shell_confirm_uses_session_agent(
+    bot: Bot, fake_kilo: FakeKilo, store: Any, fsm: Any
+) -> None:
+    from kilocode_tg_bot.handlers.tools import on_shell, on_shell_confirm
+    from kilocode_tg_bot.keyboards.inline import ShellConfirmCD
+
+    fake_kilo.seed_session(ACTIVE, "demo", agent="coder")
+    await store.set_active(42, ACTIVE)
+    msg = make_message(bot, text="/shell pwd")
+    await on_shell(
+        msg,
+        command=__make_command("pwd", "shell"),
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        state=fsm,
+    )
+    base = make_message(bot, message_id=4, text="Выполнить shell-команду?")
+    cd = ShellConfirmCD(action="run")
+    callback = make_callback(bot, data=cd.pack(), message=base)
+    await on_shell_confirm(callback, callback_data=cd, kilo=cast(Kilo, fake_kilo), state=fsm)
+    calls = fake_kilo.calls_for("run_shell")
+    assert calls and calls[0].args == (ACTIVE, "pwd", "")
+    assert calls[0].kwargs == {"agent": "coder"}  # uses the /agent-selected agent
 
 
 async def test_shell_cancel_does_not_run(

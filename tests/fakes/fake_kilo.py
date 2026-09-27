@@ -155,12 +155,14 @@ class FakeKilo:
         session_id: str,
         title: str = "untitled",
         model: SessionModelRef | None = None,
+        agent: str | None = None,
     ) -> SessionInfo:
         session = SessionInfo(
             id=session_id,
             projectID="p1",
             title=title,
             model=model,
+            agent=agent,
         )
         self._db[session_id] = session
         return session
@@ -336,14 +338,21 @@ class FakeKilo:
         return self._messages[session_id][-1]
 
     async def run_shell(
-        self, session_id: str, command: str, arguments: str = ""
+        self,
+        session_id: str,
+        command: str,
+        arguments: str = "",
+        *,
+        agent: str,
     ) -> MessageWithParts:
-        self._record("run_shell", (session_id, command, arguments), {})
+        self._record("run_shell", (session_id, command, arguments), {"agent": agent})
         return await self._call(
-            "run_shell", self._do_run_shell, session_id, command, arguments
+            "run_shell", self._do_run_shell, session_id, command, arguments, agent
         )
 
-    def _do_run_shell(self, session_id: str, command: str, arguments: str) -> MessageWithParts:
+    def _do_run_shell(
+        self, session_id: str, command: str, arguments: str, agent: str
+    ) -> MessageWithParts:
         self.seed_message(session_id, "assistant", f"shl-{command}", f"$ {command} {arguments}")
         return self._messages[session_id][-1]
 
