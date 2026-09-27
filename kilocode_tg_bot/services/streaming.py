@@ -10,16 +10,31 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any, Protocol
 
-from kilocode_client import Kilo, permission_of, text_delta_of, tool_call_of
+from kilocode_client import KiloEvent, permission_of, text_delta_of, tool_call_of
 
 # Emit callbacks: every one is awaitable and errors inside are swallowed so a
 # transient Telegram/API failure never aborts the whole stream.
 Flush = Callable[[str], Awaitable[None]]
 ToolCallback = Callable[[str], Awaitable[None]]
 PermissionCallback = Callable[[str], Awaitable[None]]
+
+
+class KiloStream(Protocol):
+    """The tiny async streaming surface :func:`stream_prompt` consumes.
+
+    Declared as a ``Protocol`` so tests can hand it a small fake instead of a
+    full :class:`kilocode_client.Kilo`. ``text`` is positional-only because the
+    test fakes name it ``prompt``.
+    """
+
+    async def send_prompt_async(self, session_id: str, text: str, /) -> None: ...
+
+    async def stream_session_events(
+        self, session_id: str, *, instance: bool = False
+    ) -> AsyncIterator[KiloEvent]: ...
 
 
 class EditThrottler:
@@ -84,7 +99,7 @@ def _format_tool(tool: Any) -> str:
 
 
 async def stream_prompt(
-    client: Kilo,
+    client: KiloStream,
     session_id: str,
     prompt: str,
     *,

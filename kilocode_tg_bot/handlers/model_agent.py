@@ -13,7 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from kilocode_client import Kilo
 
-from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.handlers.common import call_kilo, editable_message
 from kilocode_tg_bot.keyboards.inline import (
     AgentSelectCD,
     ModelProviderCD,
@@ -73,18 +73,21 @@ async def on_provider(
     if not session_id:
         await callback.answer("Сессия не выбрана. Начните /model заново")
         return
-    models = await call_kilo(lambda: kilo.list_models(directory=None), callback.message)
+    msg = editable_message(callback)
+    if msg is None:
+        await callback.answer("Сообщение недоступно. Начните /model заново")
+        return
+    models = await call_kilo(lambda: kilo.list_models(directory=None), msg)
     if models is None:
         return
     provider_id = callback_data.provider_id
     scoped = [m for m in models if _model_provider(m) in (provider_id, "")] or models
     await state.set_state(ModelSelectStates.choosing_model)
     await state.update_data(provider_id=provider_id)
-    if callback.message:
-        await callback.message.edit_text(
-            f"Провайдер `{provider_id}`. Выберите модель:",
-            reply_markup=models_keyboard(scoped, provider_id, _model_id, _model_name),
-        )
+    await msg.edit_text(
+        f"Провайдер `{provider_id}`. Выберите модель:",
+        reply_markup=models_keyboard(scoped, provider_id, _model_id, _model_name),
+    )
 
 
 @router.callback_query(ModelSelectCD.filter())
@@ -96,20 +99,23 @@ async def on_model_pick(
     if not session_id:
         await callback.answer("Сессия не выбрана. Начните /model заново")
         return
+    msg = editable_message(callback)
+    if msg is None:
+        await callback.answer("Сообщение недоступно. Начните /model заново")
+        return
     ok = await call_kilo(
         lambda: kilo.change_model(session_id, callback_data.provider_id, callback_data.model_id),
-        callback.message,
+        msg,
     )
     if ok is None:
         return
     await state.clear()
     await callback.answer("Модель применена")
-    if callback.message:
-        await callback.message.edit_text(
-            f"✅ Модель сменена на `{callback_data.model_id}` "
-            f"(provider `{callback_data.provider_id}`).",
-            reply_markup=None,
-        )
+    await msg.edit_text(
+        f"✅ Модель сменена на `{callback_data.model_id}` "
+        f"(provider `{callback_data.provider_id}`).",
+        reply_markup=None,
+    )
 
 
 @router.message(Command("agent"))
@@ -149,15 +155,16 @@ async def on_agent_pick(
             session_id, provider_id, model_id, agent=callback_data.agent_name
         )
 
-    ok = await call_kilo(apply, callback.message)
+    msg = editable_message(callback)
+    if msg is None:
+        await callback.answer("Сообщение недоступно. Начните /agent заново")
+        return
+    ok = await call_kilo(apply, msg)
     if ok is None:
         return
     await state.clear()
     await callback.answer("Агент применён")
-    if callback.message:
-        await callback.message.edit_text(
-            f"✅ Агент сменён на `{callback_data.agent_name}`.", reply_markup=None
-        )
+    await msg.edit_text(f"✅ Агент сменён на `{callback_data.agent_name}`.", reply_markup=None)
 
 
 __all__ = ["router"]

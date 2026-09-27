@@ -12,7 +12,7 @@ from kilocode_client import Kilo
 from kilocode_client.models import SessionInfo
 
 from kilocode_tg_bot.config import Settings
-from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.handlers.common import call_kilo, editable_message
 from kilocode_tg_bot.keyboards.inline import (
     DeleteConfirmCD,
     SessionSelectCD,
@@ -80,10 +80,9 @@ async def on_pick(
     user_id = callback.from_user.id
     await store.set_active(user_id, callback_data.session_id)
     await callback.answer("Активная сессия обновлена")
-    if callback.message:
-        await callback.message.edit_text(
-            f"✅ Активная сессия: `{callback_data.session_id}`", reply_markup=None
-        )
+    msg = editable_message(callback)
+    if msg is not None:
+        await msg.edit_text(f"✅ Активная сессия: `{callback_data.session_id}`", reply_markup=None)
 
 
 @router.message(Command("delete"))
@@ -118,20 +117,23 @@ async def on_delete_confirm(
     store: SessionStore,
 ) -> None:
     user_id = callback.from_user.id
+    msg = editable_message(callback)
     if callback_data.action == "no":
         await callback.answer("Отменено")
-        if callback.message:
-            await callback.message.edit_text("Удаление отменено.")
+        if msg is not None:
+            await msg.edit_text("Удаление отменено.")
         return
-    ok = await call_kilo(lambda: kilo.session.delete(callback_data.session_id), callback.message)
+    if msg is None:
+        await callback.answer("Сообщение недоступно")
+        return
+    ok = await call_kilo(lambda: kilo.session.delete(callback_data.session_id), msg)
     if ok is None:
         return
     current = await store.get_active(user_id)
     if current == callback_data.session_id:
         await store.clear(user_id)
     await callback.answer("Сессия удалена")
-    if callback.message:
-        await callback.message.edit_text(f"🗑 Сессия `{callback_data.session_id[:8]}` удалена.")
+    await msg.edit_text(f"🗑 Сессия `{callback_data.session_id[:8]}` удалена.")
 
 
 @router.message(Command("rename"))

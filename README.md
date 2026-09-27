@@ -144,18 +144,34 @@ EOF
 ## Разработка и тесты
 
 ```bash
-.venv/bin/pip install -e ".[dev]"
+uv pip install -e ".[dev]" -p .venv
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
+.venv/bin/ty check
 .venv/bin/python -m pytest -q
 ```
 
-Тесты не требуют ни сервера, ни Telegram:
+- **ruff** — линтер + форматтер (`pyproject.toml`, `[tool.ruff]`).
+- **ty** — типизатор (Astral Rust checker); читает `requires-python` из
+  `pyproject.toml` и проверяет корень проекта.
+- Тесты не требуют ни сервера, ни Telegram:
 
-- `test_auth_middleware.py` — авторизация по `user_id` на всех типах апдейтов.
-- `test_streaming_throttle.py` — буферизация дельт и интервал обновлений.
-- `test_integration_mocked.py` — полный сценарий `/new` → промпт → `/sessions` → `/delete` на фейковом клиенте.
-- `test_bot_assembly.py` — сборка Dispatcher и проверка регистрации роутеров.
+  - `test_auth_middleware.py` — авторизация по `user_id` на всех типах апдейтов.
+  - `test_streaming_throttle.py` — буферизация дельт и интервал обновлений.
+  - `test_integration_mocked.py` — полный сценарий `/new` → промпт → `/sessions` → `/delete` на фейковом клиенте.
+  - `test_bot_assembly.py` — сборка Dispatcher и проверка регистрации роутеров.
+
+## Документация
+
+Docstring'и написаны в reStructuredText и рендерятся Sphinx (autodoc).
+Собрать документацию:
+
+```bash
+uv pip install -e ".[docs]" -p .venv
+cd docs && sphinx-build -b html . _build/html
+```
+
+HTML попадает в `docs/_build/html/index.html`.
 
 ## Лицензия
 

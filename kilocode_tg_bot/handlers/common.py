@@ -13,7 +13,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
-from aiogram.types import BufferedInputFile, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from kilocode_client import KiloError, SessionInfo
 
 from kilocode_tg_bot.config import Settings
@@ -66,6 +66,17 @@ async def call_kilo(fn: Callable[[], Awaitable[T]], message: Message) -> T | Non
         logger.exception("Unexpected kilocode error")
         await message.answer(f"Unexpected error: {exc}")
         return None
+
+
+def editable_message(callback: CallbackQuery) -> Message | None:
+    """Return ``callback.message`` when it is still editable, else ``None``.
+
+    Telegram marks a message as :class:`InaccessibleMessage` once it can no
+    longer be edited/answered; fall back to a new reply in that case.
+    """
+    if isinstance(callback.message, Message):
+        return callback.message
+    return None
 
 
 async def require_active_session(

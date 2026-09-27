@@ -22,7 +22,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from kilocode_client import Kilo
 
 from kilocode_tg_bot.config import Settings
-from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.handlers.common import call_kilo, editable_message
 from kilocode_tg_bot.keyboards.inline import (
     HistoryNavCD,
     history_pagination_keyboard,
@@ -185,20 +185,25 @@ def _cap(text: str, limit: int = 3900) -> str:
 
 @router.callback_query(F.data.startswith(STOP_PREFIX))
 async def on_stop(callback: CallbackQuery, kilo: Kilo) -> None:
-    session_id = callback.data.split(":", 1)[1] if ":" in callback.data else ""
+    data = callback.data or ""
+    session_id = data.split(":", 1)[1] if ":" in data else ""
     if not session_id:
         await callback.answer("Не удалось определить сессию")
         return
+    msg = editable_message(callback)
     if not controller.is_running(session_id):
         await callback.answer("В этой сессии нет активной генерации")
-        if callback.message:
-            await callback.message.edit_reply_markup(reply_markup=None)
+        if msg is not None:
+            await msg.edit_reply_markup(reply_markup=None)
         return
-    await call_kilo(lambda: kilo.interrupt(session_id), callback.message)
-    controller.get(session_id).cancel()
+    if msg is not None:
+        await call_kilo(lambda: kilo.interrupt(session_id), msg)
+    handle = controller.get(session_id)
+    if handle is not None:
+        handle.cancel()
     await callback.answer("⏹ Останавливаю...")
-    if callback.message:
-        await callback.message.edit_reply_markup(reply_markup=None)
+    if msg is not None:
+        await msg.edit_reply_markup(reply_markup=None)
 
 
 @router.message(Command("history", "messages"))
@@ -253,9 +258,11 @@ async def on_history_nav(
 ) -> None:
     if callback.message is None:
         return
-    messages = await call_kilo(
-        lambda: kilo.list_messages(callback_data.session_id, limit=50), callback.message
-    )
+    msg = editable_message(callback)
+    if msg is None:
+        await callback.answer("Сообщение недоступно")
+        return
+    messages = await call_kilo(lambda: kilo.list_messages(callback_data.session_id, limit=50), msg)
     if messages is None:
         return
     total = len(messages)
@@ -266,7 +273,7 @@ async def on_history_nav(
         new_start = max(0, new_start - _HIST_PAGE)
     new_start = max(0, min(new_start, max(0, total - _HIST_PAGE)))
     await _render_history_page(
-        callback.message, kilo, settings, callback_data.session_id, messages, new_start, total
+        msg, kilo, settings, callback_data.session_id, messages, new_start, total
     )
     await callback.answer()
 

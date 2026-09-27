@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 from kilocode_client import Kilo
 
 from kilocode_tg_bot.config import Settings
-from kilocode_tg_bot.handlers.common import call_kilo, reply_text
+from kilocode_tg_bot.handlers.common import call_kilo, editable_message, reply_text
 from kilocode_tg_bot.keyboards.inline import ShellConfirmCD, confirm_keyboard
 from kilocode_tg_bot.state.session_store import SessionStore
 from kilocode_tg_bot.state.states import ShellPendingStates
@@ -153,21 +153,26 @@ async def on_shell_confirm(
 ) -> None:
     data = await state.get_data()
     session_id = data.get("session_id")
+    msg = editable_message(callback)
     if callback_data.action == "cancel" or not session_id:
         await state.clear()
         await callback.answer("Отменено")
-        if callback.message:
-            await callback.message.edit_text("Shell-команда отменена.")
+        if msg is not None:
+            await msg.edit_text("Shell-команда отменена.")
         return
     cmd = data.get("command", "")
     arguments = data.get("arguments", "")
     await callback.answer("Выполняю...")
-    if callback.message:
-        await callback.message.edit_text(f"⚙️ Выполняю `{cmd} {arguments}`...".strip())
-    msg = await call_kilo(lambda: kilo.run_shell(session_id, cmd, arguments), callback.message)
+    if msg is not None:
+        await msg.edit_text(f"⚙️ Выполняю `{cmd} {arguments}`...".strip())
+    result = (
+        await call_kilo(lambda: kilo.run_shell(session_id, cmd, arguments), msg)
+        if msg is not None
+        else None
+    )
     await state.clear()
-    if msg is not None and callback.message:
-        await _fmt_message_result(callback.message, msg)
+    if result is not None and msg is not None:
+        await _fmt_message_result(msg, result)
 
 
 @router.message(Command("revert"))

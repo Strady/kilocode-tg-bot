@@ -7,7 +7,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import Document, FSInputFile, Message
 from kilocode_client import Kilo
@@ -42,16 +42,17 @@ async def on_import_hint(message: Message) -> None:
 
 @router.message(F.document)
 async def on_import_document(
-    message: Message, document: Document, kilo: Kilo, store: SessionStore
+    message: Message, document: Document, bot: Bot, kilo: Kilo, store: SessionStore
 ) -> None:
-    if not (filename := document.filename):
+    user_id = message.from_user.id if message.from_user else 0
+    if not (filename := document.file_name):
         filename = "import.json"
     if not filename.lower().endswith(".json"):
         await message.answer("Поддерживаю только JSON-документы (*.json).")
         return
     try:
         data = io.BytesIO()
-        await message.bot.download(document, destination=data)
+        await bot.download(document, destination=data)
         doc = json.loads(data.getvalue().decode("utf-8"))
     except Exception as exc:  # noqa: BLE001
         await message.answer(f"Не удалось прочитать документ: {exc}")
@@ -64,7 +65,6 @@ async def on_import_document(
         return
     new_session_id = _extract_session_id(result)
     if new_session_id:
-        user_id = message.from_user.id
         await store.set_active(user_id, new_session_id)
     await message.answer(f"✅ Сессия импортирована ({new_session_id or 'id неизвестен'}).")
 

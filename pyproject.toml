@@ -4,6 +4,14 @@ version = "0.1.0"
 description = "Telegram bot (aiogram) acting as a remote control for a KiloCode headless server via kilocode-client"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
 dependencies = [
     "aiogram>=3.0",
     "pydantic>=2.0",
@@ -19,6 +27,12 @@ dev = [
     "pytest-asyncio>=0.23",
     "httpx>=0.25",
     "ruff>=0.5",
+    "ty>=0.0.1",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-autodoc-typehints>=2.0",
+    "furo",
 ]
 
 [project.scripts]
@@ -26,6 +40,9 @@ kilocode-tg-bot = "kilocode_tg_bot.bot:main"
 
 [tool.setuptools.packages.find]
 include = ["kilocode_tg_bot*"]
+
+[tool.setuptools.package-data]
+kilocode_tg_bot = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

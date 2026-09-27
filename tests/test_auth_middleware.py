@@ -9,12 +9,13 @@ heavyweight.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
+from aiogram.types import Update
 from kilocode_tg_bot.middlewares.auth import AuthMiddleware, _extract_user
 
 
-def _make_update(**payload: Any) -> SimpleNamespace:
+def _make_update(**payload: Any) -> Update:
     """A lightweight stand-in for an ``Update`` (duck-typed by the middleware)."""
     base: dict[str, Any] = {
         "update_id": 1,
@@ -28,7 +29,7 @@ def _make_update(**payload: Any) -> SimpleNamespace:
         "inline_query": None,
     }
     base.update(payload)
-    return SimpleNamespace(**base)
+    return cast(Update, SimpleNamespace(**base))
 
 
 async def _dummy_handler(event, data):  # pragma: no cover - only reached for allowed users

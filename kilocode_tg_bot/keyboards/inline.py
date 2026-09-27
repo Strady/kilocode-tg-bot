@@ -9,11 +9,14 @@ free-form callback strings.
 from __future__ import annotations
 
 import html
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from typing import TypeVar
 
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+_T = TypeVar("_T")
 
 # -- factory data classes -----------------------------------------------------
 
@@ -69,9 +72,9 @@ def _session_label(session_id: str, title: str | None) -> str:
 
 
 def sessions_keyboard(
-    sessions: Sequence[object],
-    get_id: callable,
-    get_title: callable,
+    sessions: Sequence[_T],
+    get_id: Callable[[_T], str],
+    get_title: Callable[[_T], str | None],
     with_delete: bool = False,
 ) -> InlineKeyboardMarkup:
     """Build a list of sessions as buttons; each sets it active. Requires
@@ -134,7 +137,9 @@ def history_pagination_keyboard(
 
 
 def providers_keyboard(
-    providers: list[dict], get_provider_id: callable, get_provider_name: callable
+    providers: list[dict],
+    get_provider_id: Callable[[dict], str],
+    get_provider_name: Callable[[dict], str],
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for index, provider in enumerate(providers):
@@ -150,7 +155,10 @@ def providers_keyboard(
 
 
 def models_keyboard(
-    models: list[dict], provider_id: str, get_model_id: callable, get_model_name: callable
+    models: list[dict],
+    provider_id: str,
+    get_model_id: Callable[[dict], str],
+    get_model_name: Callable[[dict], str],
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for index, model in enumerate(models):
@@ -168,7 +176,7 @@ def models_keyboard(
 
 
 def agents_keyboard(
-    agents: list[dict], get_agent_name: callable, current_agent: str | None = None
+    agents: list[dict], get_agent_name: Callable[[dict], str], current_agent: str | None = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for index, agent in enumerate(agents):

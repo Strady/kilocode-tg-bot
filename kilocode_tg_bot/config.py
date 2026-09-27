@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         description="SQLite database path for the active-session store",
     )
 
-    def require_token(self) -> None:
+    def require_token(self) -> str:
         """Return the required bot token (fails loudly if unset)."""
         return self.telegram_bot_token
 

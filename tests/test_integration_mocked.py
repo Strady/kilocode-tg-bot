@@ -9,7 +9,7 @@ client, so no network or Telegram API is involved.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -23,7 +23,7 @@ class FakeSessionInfo:
     def __init__(self, session_id: str, title: str) -> None:
         self.id = session_id
         self.title = title or "untitled"
-        self.time = SimpleNamespace(updated=int(datetime.now(UTC).timestamp() * 1000))
+        self.time = SimpleNamespace(updated=int(datetime.now(timezone.utc).timestamp() * 1000))
         self.model = None
 
 
@@ -140,7 +140,8 @@ async def _noop(text: str) -> None:
 async def test_store_persists_active_session():
     import tempfile
 
-    db = tempfile.mktemp(suffix=".db")
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db = f.name
     store = SessionStore(db)
     await store.open()
     await store.set_active(7, "abc123", "t")

@@ -9,7 +9,7 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from kilocode_client import Kilo
 
-from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.handlers.common import call_kilo, editable_message
 from kilocode_tg_bot.keyboards.inline import PermissionReplyCD, permission_keyboard
 
 router = Router(name="permissions")
@@ -19,9 +19,13 @@ router = Router(name="permissions")
 async def on_permission_reply(
     callback: CallbackQuery, callback_data: PermissionReplyCD, kilo: Kilo
 ) -> None:
+    msg = editable_message(callback)
+    if msg is None:
+        await callback.answer("Сообщение недоступно")
+        return
     ok = await call_kilo(
         lambda: kilo.permission.reply(callback_data.request_id, callback_data.reply),
-        callback.message,
+        msg,
     )
     label = {"once": "Once", "always": "Always", "reject": "Reject"}.get(
         callback_data.reply, callback_data.reply
@@ -29,11 +33,10 @@ async def on_permission_reply(
     if ok is None:
         return
     await callback.answer(f"Ответ: {html.escape(label)}")
-    if callback.message:
-        try:
-            await callback.message.edit_text(f"🔐 Разрешение отвечено: {label}.", reply_markup=None)
-        except Exception:  # noqa: BLE001 - message may already be edited
-            pass
+    try:
+        await msg.edit_text(f"🔐 Разрешение отвечено: {label}.", reply_markup=None)
+    except Exception:  # noqa: BLE001 - message may already be edited
+        pass
 
 
 @router.message(Command("permissions"))

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 from aiogram import BaseMiddleware
-from aiogram.types import Update, User
+from aiogram.types import TelegramObject, Update, User
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +49,11 @@ class AuthMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
-        event: Update,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        user = _extract_user(event)
+        user = _extract_user(cast(Update, event))
         if user is None or user.id != self._allowed_user_id:
             if user is not None:
                 logger.warning(
