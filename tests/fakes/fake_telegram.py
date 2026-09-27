@@ -114,6 +114,8 @@ class RecordingSession(BaseSession):
             return _make_result_message(bot, text=data.get("text") or "")
         if api_method in ("answerCallbackQuery", "deleteMessage", "setMyCommands"):
             return True
+        if api_method in ("pinChatMessage", "unpinChatMessage"):
+            return True
         if api_method == "answerInlineQuery":
             return True
         if api_method == "getMe":

@@ -82,6 +82,35 @@ async def test_persists_to_disk(tmp_path: Path) -> None:
         await reopened.close()
 
 
+async def test_pin_set_get_clear() -> None:
+    store = SessionStore(":memory:")
+    await store.open()
+    try:
+        assert await store.get_pin(42) is None
+        await store.set_pin(42, 200, 777)
+        assert await store.get_pin(42) == (200, 777)
+        await store.set_pin(42, 200, 888)
+        assert await store.get_pin(42) == (200, 888)
+        await store.clear_pin(42)
+        assert await store.get_pin(42) is None
+    finally:
+        await store.close()
+
+
+async def test_pin_does_not_touch_active_session() -> None:
+    store = SessionStore(":memory:")
+    await store.open()
+    try:
+        await store.set_active(42, "session-abc", "t")
+        await store.set_pin(42, 200, 11)
+        assert await store.get_active(42) == "session-abc"
+        await store.clear(42)
+        # clearing the active session must not remove the pin record
+        assert await store.get_pin(42) == (200, 11)
+    finally:
+        await store.close()
+
+
 async def test_not_open_raises() -> None:
     store = SessionStore(":memory:")
     with pytest.raises(RuntimeError):

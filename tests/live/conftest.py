@@ -95,15 +95,16 @@ async def live_dispatcher(
         telegram_allowed_user_id=LIVE_OWNER_ID,
         kilo_server_url=SERVER_URL,
     )
-    dp.update.outer_middleware(AuthMiddleware(LIVE_OWNER_ID))
-    dp.update.outer_middleware(ContextMiddleware(settings, live_store, real_kilo))
-    for module in (start, sessions, chat, permissions, model_agent, tools, export_import, misc):
-        dp.include_router(module.router)
 
     from tests.fakes.fake_telegram import RecordingSession, make_bot
 
     rec = RecordingSession()
     bot = make_bot(rec)
+    dp.update.outer_middleware(AuthMiddleware(LIVE_OWNER_ID))
+    dp.update.outer_middleware(ContextMiddleware(settings, live_store, real_kilo, bot))
+    for module in (start, sessions, chat, permissions, model_agent, tools, export_import, misc):
+        dp.include_router(module.router)
+
     yield bot, dp, rec, live_store
 
 

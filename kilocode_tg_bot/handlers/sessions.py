@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import CallbackQuery, Message
 from kilocode_client import Kilo
@@ -18,6 +18,7 @@ from kilocode_tg_bot.keyboards.inline import (
     SessionSelectCD,
     sessions_keyboard,
 )
+from kilocode_tg_bot.services.session_pin import refresh_session_pin
 from kilocode_tg_bot.state.session_store import SessionStore
 
 router = Router(name="sessions")
@@ -56,13 +57,20 @@ async def _list_and_offer(message: Message, kilo: Kilo, handler: str, settings: 
 
 
 @router.message(Command("new"))
-async def on_new(message: Message, command: CommandObject, kilo: Kilo, store: SessionStore) -> None:
+async def on_new(
+    message: Message,
+    command: CommandObject,
+    kilo: Kilo,
+    store: SessionStore,
+    bot: Bot,
+) -> None:
     title = command.args or None
     session = await call_kilo(lambda: kilo.session.create(title=title), message)
     if session is None:
         return
     user_id = message.from_user.id if message.from_user else 0
     await store.set_active(user_id, session.id, session.title)
+    await refresh_session_pin(bot, store, kilo, user_id, message.chat.id)
     await message.answer(
         f"✅ Создана сессия `{session.id[:8]}` → активна. Title: {session.title!r}"
     )
@@ -75,12 +83,18 @@ async def on_sessions(message: Message, kilo: Kilo, settings: Settings) -> None:
 
 @router.callback_query(SessionSelectCD.filter(F.action == "set"))
 async def on_pick(
-    callback: CallbackQuery, callback_data: SessionSelectCD, store: SessionStore
+    callback: CallbackQuery,
+    callback_data: SessionSelectCD,
+    store: SessionStore,
+    bot: Bot,
+    kilo: Kilo,
 ) -> None:
     user_id = callback.from_user.id
     await store.set_active(user_id, callback_data.session_id)
-    await callback.answer("Активная сессия обновлена")
     msg = editable_message(callback)
+    chat_id = msg.chat.id if msg is not None else None
+    await refresh_session_pin(bot, store, kilo, user_id, chat_id)
+    await callback.answer("Активная сессия обновлена")
     if msg is not None:
         await msg.edit_text(f"✅ Активная сессия: `{callback_data.session_id}`", reply_markup=None)
 
@@ -115,6 +129,7 @@ async def on_delete_confirm(
     callback_data: DeleteConfirmCD,
     kilo: Kilo,
     store: SessionStore,
+    bot: Bot,
 ) -> None:
     user_id = callback.from_user.id
     msg = editable_message(callback)
@@ -132,13 +147,18 @@ async def on_delete_confirm(
     current = await store.get_active(user_id)
     if current == callback_data.session_id:
         await store.clear(user_id)
+        await refresh_session_pin(bot, store, kilo, user_id, msg.chat.id)
     await callback.answer("Сессия удалена")
     await msg.edit_text(f"🗑 Сессия `{callback_data.session_id[:8]}` удалена.")
 
 
 @router.message(Command("rename"))
 async def on_rename(
-    message: Message, command: CommandObject, kilo: Kilo, store: SessionStore
+    message: Message,
+    command: CommandObject,
+    kilo: Kilo,
+    store: SessionStore,
+    bot: Bot,
 ) -> None:
     user_id = message.from_user.id if message.from_user else 0
     title = (command.args or "").strip()
@@ -153,12 +173,17 @@ async def on_rename(
     if updated is None:
         return
     await store.set_active(user_id, active_id, updated.title)
+    await refresh_session_pin(bot, store, kilo, user_id, message.chat.id)
     await message.answer(f"✅ Переименовано: `{updated.title}`")
 
 
 @router.message(Command("fork"))
 async def on_fork(
-    message: Message, command: CommandObject, kilo: Kilo, store: SessionStore
+    message: Message,
+    command: CommandObject,
+    kilo: Kilo,
+    store: SessionStore,
+    bot: Bot,
 ) -> None:
     user_id = message.from_user.id if message.from_user else 0
     active_id = await store.get_active(user_id)
@@ -173,6 +198,7 @@ async def on_fork(
     if new_session is None:
         return
     await store.set_active(user_id, new_session.id, new_session.title)
+    await refresh_session_pin(bot, store, kilo, user_id, message.chat.id)
     await message.answer(
         f"🪵 Форк создан: `{new_session.id[:8]}` → теперь активен."
         + (f" (на сообщении {message_id})" if message_id else "")

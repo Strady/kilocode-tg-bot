@@ -2,22 +2,30 @@
 
 from __future__ import annotations
 
-from aiogram import Router
+from aiogram import Bot, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from kilocode_client import Kilo
 
 from kilocode_tg_bot.config import Settings
 from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.services.session_pin import refresh_session_pin
 from kilocode_tg_bot.state.session_store import SessionStore
 
 router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def on_start(message: Message, kilo: Kilo, store: SessionStore, settings: Settings) -> None:
+async def on_start(
+    message: Message,
+    kilo: Kilo,
+    store: SessionStore,
+    settings: Settings,
+    bot: Bot,
+) -> None:
     user_id = message.from_user.id if message.from_user else 0
     active_id = await store.get_active(user_id)
+    await refresh_session_pin(bot, store, kilo, user_id, message.chat.id)
 
     lines = [
         "👋 Привет! Это пульт для KiloCode-сервера.",

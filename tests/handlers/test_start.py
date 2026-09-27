@@ -19,6 +19,7 @@ async def test_start_shows_command_list(bot: Bot, fake_kilo: Any, store: Any) ->
         kilo=cast(Kilo, fake_kilo),
         store=store,
         settings=_settings(),
+        bot=bot,
     )
     sent = _texts(bot)
     assert any("Доступные команды" in s for s in sent)
@@ -35,6 +36,7 @@ async def test_start_reports_no_active_session(
         kilo=cast(Kilo, fake_kilo),
         store=store,
         settings=_settings(),
+        bot=bot,
     )
     assert any("не выбрана" in s for s in _texts(bot))
 
@@ -53,6 +55,7 @@ async def test_start_shows_active_session_title(
         kilo=cast(Kilo, fake_kilo),
         store=store,
         settings=_settings(),
+        bot=bot,
     )
     assert any("Активная сессия" in s and "demo" in s for s in _texts(bot))
 

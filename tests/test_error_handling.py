@@ -56,6 +56,7 @@ async def test_new_http_error_is_friendly(bot: Bot, fake_kilo: FakeKilo, store: 
         command=_command("test", "new"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     assert _has_friendly(bot, "Kilo server error", "server down", "HTTP 500")
     # a failed create must not become the active session
@@ -68,7 +69,11 @@ async def test_new_network_error_is_friendly(bot: Bot, fake_kilo: FakeKilo, stor
     fake_kilo.fail("session.create", TimeoutError("connection timed out"))
     message = make_message(bot, text="/new")
     await on_new(
-        message, command=_command(None, "new"), kilo=cast(Kilo, fake_kilo), store=store
+        message,
+        command=_command(None, "new"),
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
     )
     # non-KiloError is still reported as a friendly message
     assert any("Unexpected error" in s for s in _texts(bot))
@@ -163,7 +168,13 @@ async def test_delete_confirm_error_does_not_clear_active(
     cd = DeleteConfirmCD(action="yes", session_id="s1")
     msg = make_message(bot, message_id=7, text="Удалить активную сессию?")
     callback = make_callback(bot, data=cd.pack(), message=msg)
-    await on_delete_confirm(callback, callback_data=cd, kilo=cast(Kilo, fake_kilo), store=store)
+    await on_delete_confirm(
+        callback,
+        callback_data=cd,
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
+    )
     assert _has_friendly(bot, "Kilo server error")
     # the active session is preserved because deletion failed
     assert await store.get_active(42) == "s1"

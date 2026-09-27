@@ -23,6 +23,14 @@ CREATE TABLE IF NOT EXISTS active_sessions (
 )
 """
 
+_PINS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS session_pins (
+    user_id   INTEGER PRIMARY KEY,
+    chat_id   INTEGER NOT NULL,
+    message_id INTEGER NOT NULL
+)
+"""
+
 
 class SessionStore:
     """Keyed access to active-session records backed by SQLite."""
@@ -36,6 +44,7 @@ class SessionStore:
         self._db = await aiosqlite.connect(self._db_path)
         self._db.row_factory = aiosqlite.Row
         await self._db.execute(_SCHEMA)
+        await self._db.execute(_PINS_SCHEMA)
         await self._db.commit()
 
     async def close(self) -> None:
@@ -76,6 +85,36 @@ class SessionStore:
         """Remove the active-session record for ``user_id``."""
         db = self._check()
         await db.execute("DELETE FROM active_sessions WHERE user_id = ?", (user_id,))
+        await db.commit()
+
+    async def get_pin(self, user_id: int) -> tuple[int, int] | None:
+        """Return the ``(chat_id, message_id)`` pin for ``user_id`` or ``None``."""
+        db = self._check()
+        cursor = await db.execute(
+            "SELECT chat_id, message_id FROM session_pins WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        await cursor.close()
+        return (row["chat_id"], row["message_id"]) if row else None
+
+    async def set_pin(self, user_id: int, chat_id: int, message_id: int) -> None:
+        """Record the pinned-message location used to shows the active session."""
+        db = self._check()
+        await db.execute(
+            """
+            INSERT INTO session_pins (user_id, chat_id, message_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET chat_id = excluded.chat_id,
+                                               message_id = excluded.message_id
+            """,
+            (user_id, chat_id, message_id),
+        )
+        await db.commit()
+
+    async def clear_pin(self, user_id: int) -> None:
+        """Remove the pinned-message record for ``user_id``."""
+        db = self._check()
+        await db.execute("DELETE FROM session_pins WHERE user_id = ?", (user_id,))
         await db.commit()
 
     async def _rows(self) -> list[dict[str, Any]]:

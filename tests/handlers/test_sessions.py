@@ -41,6 +41,7 @@ async def test_new_creates_and_activates(
         command=make_command("my project", "new"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     calls = fake_kilo.calls_for("session.create")
     assert calls and calls[0].args == ("my project",)
@@ -59,6 +60,7 @@ async def test_new_without_title_creates(
         command=make_command(None, "new"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     assert fake_kilo.called("session.create")
     # default title "untitled" came through; the session is active
@@ -103,7 +105,13 @@ async def test_pick_sets_active_session(
     fake_kilo.seed_session("s1", "alpha")
     cd = SessionSelectCD(action="set", session_id="s1")
     callback = make_callback(bot, data=cd.pack())
-    await on_pick(callback, callback_data=cd, store=store)
+    await on_pick(
+        callback,
+        callback_data=cd,
+        store=store,
+        bot=bot,
+        kilo=cast(Kilo, fake_kilo),
+    )
     assert await store.get_active(42) == "s1"
 
 
@@ -131,6 +139,7 @@ async def test_rename_active_session(
         command=make_command("new title", "rename"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     assert fake_kilo.called("session.rename")
     assert any("Переименовано" in s and "new title" in s for s in _texts(bot))
@@ -148,6 +157,7 @@ async def test_rename_requires_title(
         command=make_command(None, "rename"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     assert not fake_kilo.called("session.rename")
     assert any("Использование" in s for s in _texts(bot))
@@ -177,7 +187,13 @@ async def test_delete_confirm_yes_deletes_and_clears(
     await store.set_active(42, ACTIVE)
     cd = DeleteConfirmCD(action="yes", session_id=ACTIVE)
     callback = make_callback(bot, data=cd.pack())
-    await on_delete_confirm(callback, callback_data=cd, kilo=cast(Kilo, fake_kilo), store=store)
+    await on_delete_confirm(
+        callback,
+        callback_data=cd,
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
+    )
     assert fake_kilo.called("session.delete")
     assert await store.get_active(42) is None
     assert any("удалена" in s for s in _edits(bot))
@@ -193,7 +209,13 @@ async def test_delete_confirm_no_does_not_delete(
     await store.set_active(42, ACTIVE)
     cd = DeleteConfirmCD(action="no", session_id=ACTIVE)
     callback = make_callback(bot, data=cd.pack())
-    await on_delete_confirm(callback, callback_data=cd, kilo=cast(Kilo, fake_kilo), store=store)
+    await on_delete_confirm(
+        callback,
+        callback_data=cd,
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
+    )
     assert not fake_kilo.called("session.delete")
     assert await store.get_active(42) == ACTIVE
     assert any("отменено" in s.lower() for s in _edits(bot))
@@ -212,6 +234,7 @@ async def test_fork_with_message_id(
         command=make_command("some-msg-1", "fork"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     calls = fake_kilo.calls_for("session.fork")
     assert calls and calls[0].kwargs.get("message_id") == "some-msg-1"
@@ -231,6 +254,7 @@ async def test_fork_without_message_id(
         command=make_command(None, "fork"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     calls = fake_kilo.calls_for("session.fork")
     assert calls and calls[0].kwargs.get("message_id") is None
@@ -248,6 +272,75 @@ async def test_fork_requires_active_session(
         command=make_command(None, "fork"),
         kilo=cast(Kilo, fake_kilo),
         store=store,
+        bot=bot,
     )
     assert not fake_kilo.called("session.fork")
     assert any("Нет активной сессии" in s for s in _texts(bot))
+
+
+async def test_new_pins_current_session(
+    bot: Bot, fake_kilo: FakeKilo, store: Any, make_command: Any
+) -> None:
+    from kilocode_tg_bot.handlers.sessions import on_new
+
+    message = make_message(bot, text="/new pinned session")
+    await on_new(
+        message,
+        command=make_command("pinned session", "new"),
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
+    )
+    pins = [c for c in records(bot).calls if c.method == "pinChatMessage"]
+    assert pins, "expected a pin after creating a session"
+    sent = [c.text() for c in records(bot).calls if c.method == "sendMessage"]
+    assert any("Текущая сессия" in text for text in sent)
+    assert await store.get_pin(42) is not None
+
+
+async def test_pick_updates_existing_pin(
+    bot: Bot, fake_kilo: FakeKilo, store: Any
+) -> None:
+    from kilocode_tg_bot.handlers.sessions import on_pick
+    from kilocode_tg_bot.keyboards.inline import SessionSelectCD
+
+    fake_kilo.seed_session("s1", "alpha", agent="code")
+    await store.set_active(42, "s1", "alpha")
+    await store.set_pin(42, 200, 999)
+    cd = SessionSelectCD(action="set", session_id="s1")
+    callback = make_callback(bot, data=cd.pack())
+    await on_pick(
+        callback,
+        callback_data=cd,
+        store=store,
+        bot=bot,
+        kilo=cast(Kilo, fake_kilo),
+    )
+    edits = [c.text() for c in records(bot).calls if c.method == "editMessageText"]
+    assert any("Текущая сессия" in text for text in edits)
+    # existing pin is edited in place, not re-pinned
+    assert not [c for c in records(bot).calls if c.method == "pinChatMessage"]
+    assert await store.get_pin(42) == (200, 999)
+
+
+async def test_delete_confirm_unpins(
+    bot: Bot, fake_kilo: FakeKilo, store: Any
+) -> None:
+    from kilocode_tg_bot.handlers.sessions import on_delete_confirm
+    from kilocode_tg_bot.keyboards.inline import DeleteConfirmCD
+
+    fake_kilo.seed_session(ACTIVE, "t")
+    await store.set_active(42, ACTIVE)
+    await store.set_pin(42, 200, 999)
+    cd = DeleteConfirmCD(action="yes", session_id=ACTIVE)
+    callback = make_callback(bot, data=cd.pack())
+    await on_delete_confirm(
+        callback,
+        callback_data=cd,
+        kilo=cast(Kilo, fake_kilo),
+        store=store,
+        bot=bot,
+    )
+    assert await store.get_pin(42) is None
+    methods = [c.method for c in records(bot).calls]
+    assert "unpinChatMessage" in methods

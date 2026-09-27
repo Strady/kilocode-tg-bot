@@ -95,7 +95,7 @@ def _build_dispatcher(
     bot = make_bot(rec)
     dp = Dispatcher(storage=MemoryStorage())
     dp.update.outer_middleware(AuthMiddleware(settings.telegram_allowed_user_id))
-    dp.update.outer_middleware(ContextMiddleware(settings, store, kilo))
+    dp.update.outer_middleware(ContextMiddleware(settings, store, kilo, bot))
     for module in (start, sessions, chat, permissions, model_agent, tools, export_import, misc):
         dp.include_router(module.router)
     return bot, dp, rec
