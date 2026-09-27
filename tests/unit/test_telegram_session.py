@@ -27,16 +27,16 @@ class TestBuildSession:
             Settings(
                 telegram_bot_token="123456:TEST-TOKEN",
                 telegram_allowed_user_id=1,
-                telegram_proxy_url="http://10.1.252.242:9999",
-                telegram_proxy_username="a.abramenko",
+                telegram_proxy_url="http://proxy.example.com:9999",
+                telegram_proxy_username="proxyuser",
                 telegram_proxy_password="secret",
             )
         )
         assert session._connector_type is ProxyConnector
         cfg = session._connector_init
-        assert cfg["host"] == "10.1.252.242"
+        assert cfg["host"] == "proxy.example.com"
         assert cfg["port"] == 9999
-        assert cfg["username"] == "a.abramenko"
+        assert cfg["username"] == "proxyuser"
         assert cfg["password"] == "secret"
 
     def test_proxy_with_embedded_credentials(self) -> None:
@@ -44,7 +44,7 @@ class TestBuildSession:
             Settings(
                 telegram_bot_token="123456:TEST-TOKEN",
                 telegram_allowed_user_id=1,
-                telegram_proxy_url="http://user:pass@10.1.252.242:9999",
+                telegram_proxy_url="http://user:pass@proxy.example.com:9999",
             )
         )
         assert session._connector_type is ProxyConnector
@@ -70,8 +70,8 @@ def test_build_session_needs_no_network() -> None:
         Settings(
             telegram_bot_token="123456:TEST-TOKEN",
             telegram_allowed_user_id=1,
-            telegram_proxy_url="http://10.1.252.242:9999",
+            telegram_proxy_url="http://proxy.example.com:9999",
         )
     )
     # Merely building the session/connector must not connect anywhere.
-    assert session._connector_init["host"] == "10.1.252.242"
+    assert session._connector_init["host"] == "proxy.example.com"

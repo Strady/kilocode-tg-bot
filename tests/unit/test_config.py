@@ -60,37 +60,37 @@ class TestTelegramProxy:
         assert self._settings().telegram_proxy() is None
 
     def test_proxy_url_without_credentials_is_used_as_is(self) -> None:
-        s = self._settings(telegram_proxy_url="http://10.1.252.242:9999")
-        assert s.telegram_proxy() == "http://10.1.252.242:9999"
+        s = self._settings(telegram_proxy_url="http://proxy.example.com:9999")
+        assert s.telegram_proxy() == "http://proxy.example.com:9999"
 
     def test_proxy_credentials_are_embedded(self) -> None:
         s = self._settings(
-            telegram_proxy_url="http://10.1.252.242:9999",
-            telegram_proxy_username="a.abramenko",
+            telegram_proxy_url="http://proxy.example.com:9999",
+            telegram_proxy_username="proxyuser",
             telegram_proxy_password="secret",
         )
-        assert s.telegram_proxy() == "http://a.abramenko:secret@10.1.252.242:9999"
+        assert s.telegram_proxy() == "http://proxyuser:secret@proxy.example.com:9999"
 
     def test_explicit_credentials_in_url_take_precedence(self) -> None:
         s = self._settings(
-            telegram_proxy_url="http://user:pass@10.1.252.242:9999",
+            telegram_proxy_url="http://user:pass@proxy.example.com:9999",
             telegram_proxy_username="other",
             telegram_proxy_password="otherpw",
         )
-        assert s.telegram_proxy() == "http://user:pass@10.1.252.242:9999"
+        assert s.telegram_proxy() == "http://user:pass@proxy.example.com:9999"
 
     def test_username_without_password_keeps_url(self) -> None:
         s = self._settings(
-            telegram_proxy_url="http://10.1.252.242:9999",
-            telegram_proxy_username="a.abramenko",
+            telegram_proxy_url="http://proxy.example.com:9999",
+            telegram_proxy_username="proxyuser",
         )
-        assert s.telegram_proxy() == "http://10.1.252.242:9999"
+        assert s.telegram_proxy() == "http://proxy.example.com:9999"
 
     def test_proxy_env_vars_are_loaded(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
         monkeypatch.setenv("TELEGRAM_ALLOWED_USER_ID", "1")
-        monkeypatch.setenv("TELEGRAM_PROXY_URL", "http://10.1.252.242:9999")
-        monkeypatch.setenv("TELEGRAM_PROXY_USERNAME", "a.abramenko")
+        monkeypatch.setenv("TELEGRAM_PROXY_URL", "http://proxy.example.com:9999")
+        monkeypatch.setenv("TELEGRAM_PROXY_USERNAME", "proxyuser")
         monkeypatch.setenv("TELEGRAM_PROXY_PASSWORD", "secret")
         settings = Settings(_env_file=None)
-        assert settings.telegram_proxy() == "http://a.abramenko:secret@10.1.252.242:9999"
+        assert settings.telegram_proxy() == "http://proxyuser:secret@proxy.example.com:9999"
