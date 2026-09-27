@@ -122,8 +122,7 @@ Seed data with `seed_session`, `seed_message`, `seed_todo`, `seed_pending_permis
 | `make_callback`  | build a bot-bound `CallbackQuery`                               |
 | `make_command`   | build a `CommandObject` for router args                          |
 | `active_store`   | store pre-populated with an active session                      |
-| `fsm`            | `FSMContext` bound to owner id                                  |
-| `feed`           | synchronous `feed_raw_update` for dispatcher-level tests        |
+| `fsm`            | `FSMContext` bound to owner id                                      |
 
 Direct handler calls take `kilo=cast(Kilo, fake_kilo)` to satisfy the runtime DI
 annotation; exact handler surces are imported inside each test.

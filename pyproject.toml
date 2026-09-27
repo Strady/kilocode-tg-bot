@@ -50,7 +50,6 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "live: integration tests that hit a real `kilo serve` (require KILO_SERVER_URL)",
-    "unit: fast offline unit tests",
 ]
 addopts = "-ra --strict-markers"
 

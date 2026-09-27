@@ -137,17 +137,6 @@ async def active_store(store: SessionStore) -> AsyncGenerator[tuple[SessionStore
     yield store, "session-01"
 
 
-def feed(dp: Dispatcher, bot: Bot, update: dict[str, Any]) -> Any:
-    """Synchronous wrapper around ``dp.feed_raw_update`` for convenience."""
-    import asyncio
-
-    return asyncio.run(_feed(dp, bot, update))
-
-
-async def _feed(dp: Dispatcher, bot: Bot, update: dict[str, Any]) -> Any:
-    return await dp.feed_raw_update(bot=bot, update=update)
-
-
 @pytest.fixture
 def make_command() -> Callable[..., Any]:
     from aiogram.filters import CommandObject
@@ -171,12 +160,6 @@ def fsm() -> Any:
 # -- re-exports for downstream convenience --------------------------------------
 
 
-def make_raw_command(text: str, *, user_id: int = OWNER_ID) -> dict[str, Any]:
-    from tests.fakes.fake_telegram import for_command_update
-
-    return for_command_update(text, user_id=user_id)
-
-
 __all__ = [
     "OWNER_ID",
     "settings",
@@ -187,8 +170,6 @@ __all__ = [
     "make_message",
     "make_callback",
     "active_store",
-    "feed",
-    "make_raw_command",
     "make_command",
     "fsm",
 ]

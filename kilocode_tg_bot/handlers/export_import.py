@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import tempfile
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from kilocode_client import Kilo
 from kilocode_tg_bot.handlers.common import call_kilo
 from kilocode_tg_bot.services.kilo import humanize_error
 from kilocode_tg_bot.state.session_store import SessionStore
+
+logger = logging.getLogger(__name__)
 
 router = Router(name="export_import")
 
@@ -32,6 +35,7 @@ async def on_export(message: Message, kilo: Kilo, store: SessionStore) -> None:
     try:
         await kilo.export_session_to_file(session_id, str(path))
     except Exception as exc:  # noqa: BLE001
+        logger.exception("Export failed for session %s", session_id)
         await message.answer(humanize_error(exc))
         return
     await message.answer_document(
