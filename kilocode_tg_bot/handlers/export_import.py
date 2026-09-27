@@ -13,6 +13,7 @@ from aiogram.types import Document, FSInputFile, Message
 from kilocode_client import Kilo
 
 from kilocode_tg_bot.handlers.common import call_kilo
+from kilocode_tg_bot.services.kilo import humanize_error
 from kilocode_tg_bot.state.session_store import SessionStore
 
 router = Router(name="export_import")
@@ -26,8 +27,12 @@ async def on_export(message: Message, kilo: Kilo, store: SessionStore) -> None:
         await message.answer("Нет активной сессии.")
         return
     path = Path(tempfile.gettempdir()) / f"kilo_session_{session_id[:8]}.json"
-    result = await call_kilo(lambda: kilo.export_session_to_file(session_id, str(path)), message)
-    if result is None:
+    # export_session_to_file returns None on success, so we cannot use call_kilo's
+    # None-means-error convention; report failures explicitly instead.
+    try:
+        await kilo.export_session_to_file(session_id, str(path))
+    except Exception as exc:  # noqa: BLE001
+        await message.answer(humanize_error(exc))
         return
     await message.answer_document(
         FSInputFile(path, filename=f"{session_id}.json"),

@@ -25,6 +25,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=4.0",
     "httpx>=0.25",
     "ruff>=0.5",
     "ty>=0.0.1",
@@ -47,6 +48,26 @@ kilocode_tg_bot = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "live: integration tests that hit a real `kilo serve` (require KILO_SERVER_URL)",
+    "unit: fast offline unit tests",
+]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["kilocode_tg_bot"]
+omit = [
+    "kilocode_tg_bot/handlers/__init__.py",
+    "kilocode_tg_bot/middlewares/__init__.py",
+    "kilocode_tg_bot/services/__init__.py",
+    "kilocode_tg_bot/state/__init__.py",
+    "kilocode_tg_bot/keyboards/__init__.py",
+    "kilocode_tg_bot/__init__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.ruff]
 line-length = 100

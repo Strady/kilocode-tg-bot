@@ -148,18 +148,18 @@ uv pip install -e ".[dev]" -p .venv
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/ty check
-.venv/bin/python -m pytest -q
+.venv/bin/python -m pytest -m "not live"
 ```
 
 - **ruff** — линтер + форматтер (`pyproject.toml`, `[tool.ruff]`).
 - **ty** — типизатор (Astral Rust checker); читает `requires-python` из
   `pyproject.toml` и проверяет корень проекта.
-- Тесты не требуют ни сервера, ни Telegram:
-
-  - `test_auth_middleware.py` — авторизация по `user_id` на всех типах апдейтов.
-  - `test_streaming_throttle.py` — буферизация дельт и интервал обновлений.
-  - `test_integration_mocked.py` — полный сценарий `/new` → промпт → `/sessions` → `/delete` на фейковом клиенте.
-  - `test_bot_assembly.py` — сборка Dispatcher и проверка регистрации роутеров.
+- Основной набор тестов (`-m "not live"`) не требует ни сервера, ни Telegram:
+  Telegram-транспорт — записывающий `RecordingSession`, зависимость Kilo —
+  in-memory `FakeKilo`, так что всё детерминированно и быстро. Структура,
+  уровни, фикстуры и как расширять тесты описаны в `tests/README.md`.
+- Опциональные live-тесты (`pytest -m live`) ходят на реальный `kilo serve`
+  через реального клиента; автоматически пропускаются, если сервер недоступен.
 
 ## Документация
 

@@ -13,16 +13,20 @@ from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
-from kilocode_client import Kilo
 
 from kilocode_tg_bot.config import Settings
 from kilocode_tg_bot.state.session_store import SessionStore
 
 
 class ContextMiddleware(BaseMiddleware):
-    """Add shared ``settings``, ``store`` and ``kilo`` to handler data."""
+    """Add shared ``settings``, ``store`` and ``kilo`` to handler data.
 
-    def __init__(self, settings: Settings, store: SessionStore, kilo: Kilo) -> None:
+    ``kilo`` is an opaque injected dependency (the real :class:`Kilo` in
+    production, a test fake elsewhere); the middleware never calls into it, so it
+    is typed as ``Any`` to accept both.
+    """
+
+    def __init__(self, settings: Settings, store: SessionStore, kilo: Any) -> None:
         self._settings = settings
         self._store = store
         self._kilo = kilo
