@@ -82,6 +82,9 @@ kilo daemon start
 |---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | ✅ | — | Токен бота от @BotFather |
 | `TELEGRAM_ALLOWED_USER_ID` | ✅ | — | Telegram user id владельца (без него бот не стартует) |
+| `TELEGRAM_PROXY_URL` | — | — | HTTP/SOCKS прокси для Telegram API (напр. `http://10.1.252.242:9999`) |
+| `TELEGRAM_PROXY_USERNAME` | — | — | Логин прокси (если нужна авторизация) |
+| `TELEGRAM_PROXY_PASSWORD` | — | — | Пароль прокси |
 | `KILO_SERVER_URL` | — | `http://127.0.0.1:4096` | URL сервера Kilo |
 | `KILO_SERVER_USERNAME` | — | env / `kilo` | Basic-auth логин |
 | `KILO_SERVER_PASSWORD` | — | — | Basic-auth пароль (пусто = без авторизации) |
@@ -113,6 +116,11 @@ cat > .env <<'EOF'
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF
 TELEGRAM_ALLOWED_USER_ID=123456789
 KILO_SERVER_URL=http://127.0.0.1:4096
+
+# Если Telegram недоступен напрямую — включите HTTP/SOCKS прокси:
+# TELEGRAM_PROXY_URL=http://10.1.252.242:9999
+# TELEGRAM_PROXY_USERNAME=a.abramenko
+# TELEGRAM_PROXY_PASSWORD=secret
 EOF
 
 # 3) бот

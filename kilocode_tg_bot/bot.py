@@ -23,6 +23,7 @@ from kilocode_tg_bot.handlers import (
 from kilocode_tg_bot.middlewares.auth import AuthMiddleware
 from kilocode_tg_bot.middlewares.context import ContextMiddleware
 from kilocode_tg_bot.services import kilo as kilo_service
+from kilocode_tg_bot.services.telegram_session import build_session
 from kilocode_tg_bot.state.session_store import SessionStore
 
 logging.basicConfig(
@@ -36,7 +37,10 @@ RESTART_COMMANDS = {"/new", "/sessions", "/model", "/agent"}
 
 def build_dispatcher(settings) -> tuple[Bot, Dispatcher, SessionStore]:
     """Construct the full app graph for tests and the CLI runner."""
-    bot = Bot(token=settings.telegram_bot_token)
+    bot = Bot(
+        token=settings.telegram_bot_token,
+        session=build_session(settings),
+    )
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 
